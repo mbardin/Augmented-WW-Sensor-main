@@ -1,7 +1,7 @@
 
-// Augmented Woodwind Sensor v 0.2.5
+// Augmented Woodwind Sensor v 0.3
 // code by Matthew A. Bardin
-// this version Dec 2021
+// this version Dec 10 2021
 
 
 //libraries used:
@@ -112,14 +112,7 @@ void setup() {
 }
 
 void loop() {
- pgy = gy; // stores values from previous loop. used to compare with current values. make into seperate function or leave in loop?
- pap = ap;
- pfingP1 = fingP1;
- pfingP2 = fingP2;
- pfingP3 = fingP3;
- pbutt1 = butt1;
- pbutt2 = butt2;
-
+ 
   gy = mpu_read(); // gyro+accel
   delay(2); // small delay between each sensor reading.
   ap = airPressureRead();
@@ -132,33 +125,20 @@ void loop() {
   butt2 = buttonRead2();
   delay(2);
 
-  if((pgy * pgy) - (gy * gy) > 1 ){ // double check all ranges of sensors. replace 1 with appropriate value
-  trans("gyro", gy);
-  } // set up accel. currently is part of same function as gyro. monitor and send values seperately.
-  if((pap * pap) - (ap * ap) > 1 ){ 
-  trans("airPressure", ap);
-  }
-  if((pfingP1 * pfingP1) - (fingP1 * fingP1) > 1 ){ 
-  trans("index", fingP1);
-  }
-  if((pfingP2 * pfingP2) - (fingP2 * fingP2) > 1 ){ 
-  trans("middle", fingP2);
-  }
-  if((pfingP3 * pfingP3) - (fingP3 * fingP3) > 1 ){ 
-  trans("ring", fingP3);
-  }
-  if((pbutt1 * pbutt1) - (butt1 * butt1) > 0.5 ){ 
-  trans("b1", butt1); 
-  }
-  if((pbutt2 * pbutt2) - (butt2 * butt2) > 0.5 ){ 
-  trans("b2", butt2); 
-  }
+  
+ pgy = gy; // stores values from previous loop. used to compare with current values. make into seperate function or leave in loop?
+ pap = ap;
+ pfingP1 = fingP1;
+ pfingP2 = fingP2;
+ pfingP3 = fingP3;
+ pbutt1 = butt1;
+ pbutt2 = butt2;
 
 
-  // store above functions in a variable.
+  
   // check value is appropriate before send.
 
-  // bluetooth communication with the computer
+  // bluetooth communication from the computer
   String inputFromOtherSide;
   if (SerialBT.available()) {
     inputFromOtherSide = SerialBT.readString();
@@ -166,7 +146,7 @@ void loop() {
     SerialBT.println(inputFromOtherSide);
   }
 
-  timer.tick(); // tick the timer every loop.
+  timer.tick(); // tick the timer every loop. calls battery check every 5 minutes.
 }
 
 void startLights() {
@@ -246,6 +226,10 @@ void mpu_read() { // gets accel and gyro data. transmits it
     }
   }
 
+    if((pgy * pgy) - (gy * gy) > 1 ){ // double check all ranges of sensors. replace 1 with appropriate value
+  trans("gyro", gy);
+  } // set up accel. currently is part of same function as gyro. monitor and send values seperately.
+
 
   // transmit accel values
   //  SerialBT.print("ax ");
@@ -284,7 +268,7 @@ void mpu_read() { // gets accel and gyro data. transmits it
 
 }
 
-void airPressureRead() {
+void airPressureRead() { //adjust this function to match current settings
   values[ind] = MPS20N0040D.read();
   ind++;
   if (ind >= 5) { // change "5 in this function if changed above
@@ -301,8 +285,12 @@ void airPressureRead() {
   // Serial.print("p ");
   // Serial.println(airP);
 
-  float mapped = valueMapping(airP);
-  return mapped;
+  void mapped = valueMapping(airP);
+
+   if((pap * pap) - (ap * ap) > 1 ){ 
+  trans("airPressure", ap);
+  }
+  //return mapped;
 
   //  float avg_val = 0.0; // variable for averaging
   //  for (int ii = 0; ii < avg_size; ii++) {
@@ -327,33 +315,53 @@ void buttonRead1() {
   // Values default to 0 when not conneceted through pull-down resistor.
 
   float mapped = valueMapping(button1State);
-  return mapped;
+
+  if((pbutt1 * pbutt1) - (butt1 * butt1) > 0.5 ){ 
+  trans("b1", butt1); 
+  }
+  //return mapped;
 }
 
 void buttonRead2() {
  
   button2State = digitalRead(button2);
   float mapped = valueMapping(button2State);
-  return mapped;
+
+  if((pbutt2 * pbutt2) - (butt2 * butt2) > 0.5 ){ 
+  trans("b2", butt2); 
+  }
+  //return mapped;
 }
 
 
 void fingerPressureRead1() { 
   indexPressVal = analogRead(indexPress);
   float mapped = valueMapping(indexPress);
-  return mapped;
+
+   if((pfingP1 * pfingP1) - (fingP1 * fingP1) > 1 ){ 
+  trans("index", fingP1);
+  }
+  //return mapped;
 }
 
 void fingerPressureRead2() { 
   middlePressVal = analogRead(middlePress);
   float mapped = valueMapping(middlePress);
-  return mapped;
+
+  if((pfingP2 * pfingP2) - (fingP2 * fingP2) > 1 ){ 
+  trans("middle", fingP2);
+  }
+  //return mapped;
 }
 
 void fingerPressureRead3() { 
   ringPressVal = analogRead(ringPress);
   float mapped = valueMapping(ringPress);
-  return mapped;
+
+  if((pfingP3 * pfingP3) - (fingP3 * fingP3) > 1 ){ 
+  trans("ring", fingP3);
+  }
+  //return mapped;
 }
 
 char* valueMapping(int value) { // change char* to void if not returning values
@@ -374,7 +382,4 @@ Serial.print(label);
 Serial.print(" ");
 Serial.println(transmit);
 }
-
-// rms -root means square
-// square values -> take average -> sqrt avg
 
