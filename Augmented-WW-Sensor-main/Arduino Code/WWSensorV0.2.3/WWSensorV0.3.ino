@@ -104,28 +104,34 @@ void setup()
 
 void loop()
 {
-
+  // read from each sensor. setup gyro/accel and ap.
   gy = mpu_read(); // gyro+accel
-  delay(2);        // small delay between each sensor reading.
   ap = airPressureRead();
-  delay(2);
-  fingP1 = fingerPressureRead1(); // 3 FSRs.
-  fingP2 = fingerPressureRead2();
-  fingP3 = fingerPressureRead3();
-  delay(2);
-  butt1 = buttonRead1();
-  butt2 = buttonRead2();
-  delay(2);
+  fingP1 = sense("index "); 
+  fingP2 = sense("middle ");
+  fingP3 = sense("ring ");
+  butt1 = sense("button1 ");
+  butt2 = sense("button2 ");
 
-  pgy = gy; // stores values from previous loop. used to compare with current values. make into seperate function or leave in loop?
+  // check if each reading is above threshold to send. helps to minimize noise and latency
+  // check trigger value is appropriate before send.
+  // label in check call must match with max. make match with sense call
+  check("gyro ", pgy, gy, 10);
+  //check("accel ", pacc, acc, 10);
+  check("pressure ", pap, ap, 100);
+  check("index ", pfingP1, fingP1, 10);
+  check("middle ", pfingP2, fingP2, 10);
+  check("ring ", pfingP3, fingP3, 10);
+  check("button1 ", pbutt1, butt1, 0.5);
+  check("button2 ", pbutt2, butt2, 0.5);
+
+  pgy = gy; // stores values from previous loop. used to compare with current values in check()
   pap = ap;
   pfingP1 = fingP1;
   pfingP2 = fingP2;
   pfingP3 = fingP3;
   pbutt1 = butt1;
   pbutt2 = butt2;
-
-  // check value is appropriate before send.
 
   // bluetooth communication from the computer
   String inputFromOtherSide;
@@ -141,7 +147,7 @@ void loop()
 
 void startLights()
 {
-  // turns light off, blinks 2x, then remains on
+  // turns light off, blinks 2x, then remains on. power led only on then off until low power below 30%
   digitalWrite(ledPin, LOW);
   digitalWrite(pwrLed, LOW);
   delay(500);
@@ -332,69 +338,36 @@ void airPressureRead()
   //  Serial.println(avg_val, 0); // print out the average
 }
 
-void buttonRead1()
-{
-  button1State = digitalRead(button1);
-
-  // only transmits values when valuese are present. helps to eliminate data clutter/floating values
-  // Values default to 0 when not conneceted through pull-down resistor.
-
-  float mapped = valueMapping(button1State);
-
-  if ((pbutt1 * pbutt1) - (butt1 * butt1) > 0.5)
-  {
-    trans("b1 ", butt1);
-  }
-  //return mapped;
-}
-
-void buttonRead2()
+float sense(char sensor)
 {
 
-  button2State = digitalRead(button2);
-  float mapped = valueMapping(button2State);
-
-  if ((pbutt2 * pbutt2) - (butt2 * butt2) > 0.5)
+  if (sensor == "index ")
   {
-    trans("b2 ", butt2);
+    indexPressVal = analogRead(indexPress);
+    float mapped = valueMapping(indexPress);
   }
-  //return mapped;
-}
-
-void fingerPressureRead1()
-{
-  indexPressVal = analogRead(indexPress);
-  float mapped = valueMapping(indexPress);
-
-  if ((pfingP1 * pfingP1) - (fingP1 * fingP1) > 1)
+  else if (sensor == "middle ")
   {
-    trans("index ", fingP1);
+    middlePressVal = analogRead(middlePress);
+    float mapped = valueMapping(middlePress);
   }
-  //return mapped;
-}
-
-void fingerPressureRead2()
-{
-  middlePressVal = analogRead(middlePress);
-  float mapped = valueMapping(middlePress);
-
-  if ((pfingP2 * pfingP2) - (fingP2 * fingP2) > 1)
+  else if (sensor == "ring ")
   {
-    trans("middle ", fingP2);
+    ringPressVal = analogRead(ringPress);
+    float mapped = valueMapping(ringPress);
   }
-  //return mapped;
-}
-
-void fingerPressureRead3()
-{
-  ringPressVal = analogRead(ringPress);
-  float mapped = valueMapping(ringPress);
-
-  if ((pfingP3 * pfingP3) - (fingP3 * fingP3) > 1)
+  else if (sensor == "button1")
   {
-    trans("ring ", fingP3);
+    button1State = digitalRead(button1);
+    float mapped = valueMapping(button1State);
   }
-  //return mapped;
+  else if (sensor == "button2")
+  {
+    button2State = digitalRead(button2);
+    float mapped = valueMapping(button2State);
+  }
+  //add else if for gyro accel and air pressure
+  return mapped
 }
 
 char *valueMapping(int value)
@@ -403,13 +376,20 @@ char *valueMapping(int value)
   char sendValue[7];
   sprintf(sendValue, "%.5f", mapped); // might need "%.5d" as second argument. current should work.
   puts(sendValue);
-  Serial.print(sendValue);
+  //Serial.print(sendValue);
   return sendValue;
 }
 
-void trans(string label, float transmit)
-{ // transmits a label and the data. make sure labels match in max patches.
+void check(char label, float value1, float value2, float trigger) //condense into sense()?
+{
+  if ((value2 * value2) - (value1 * value1) >= trigger)
+  {
+    trans(label, value2);
+  }
+}
 
+void trans(char label, float transmit)
+{ // transmits a label and the data. make sure labels match in max patches.
   if (mode == 1)
   {
     // set to wireless mode
