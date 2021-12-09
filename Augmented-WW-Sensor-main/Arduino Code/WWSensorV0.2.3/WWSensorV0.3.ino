@@ -44,7 +44,7 @@ int values[5] = {0}; //change here and below to change number of samples for AP 
 int ind = 0;
 int mode = 1; //defaults to wired version for testing
 
-float gy = 0;
+float gy = 0; //figure out which of these I can remove once the code is working.
 float acc = 0;
 float accel = 0;
 float ap = 0;
@@ -342,7 +342,7 @@ float sense(char sensor)
 
 char *valueMapping(int value)
 { // change char* to void if not returning values
-  value.foreach () = >
+  value.foreach() = char
   { //check formatting. I want this to happen for each value sent in because of arrays.
     float mapped = value / 4095;
     char sendValue[7];
