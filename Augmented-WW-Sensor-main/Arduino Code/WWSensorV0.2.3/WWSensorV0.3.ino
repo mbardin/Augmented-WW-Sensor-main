@@ -45,6 +45,8 @@ int ind = 0;
 int mode = 1; //defaults to wired version for testing
 
 float gy = 0;
+float acc = 0;
+float accel = 0;
 float ap = 0;
 float fingP1 = 0;
 float fingP2 = 0;
@@ -52,12 +54,16 @@ float fingP3 = 0;
 float butt1 = 0;
 float butt2 = 0;
 float pgy = 0;
+float pacc = 0;
 float pap = 0;
 float pfingP1 = 0;
 float pfingP2 = 0;
 float pfingP3 = 0;
 float pbutt1 = 0;
 float pbutt2 = 0;
+float air = 0;
+float gyScope = 0;
+float acScope = 0;
 
 int batteryLevel = 0; // for checking battery level
 float voltage = 0;
@@ -105,20 +111,19 @@ void setup()
 void loop()
 {
   // read from each sensor. setup gyro/accel and ap.
-  gy = mpu_read(); // gyro+accel
-  ap = airPressureRead();
-  fingP1 = sense("index "); 
+  gy = sense("gyro "); // gyro+accel
+  accel = sense("accel ");
+  ap = sense("air ");
+  fingP1 = sense("index ");
   fingP2 = sense("middle ");
   fingP3 = sense("ring ");
   butt1 = sense("button1 ");
   butt2 = sense("button2 ");
 
   // check if each reading is above threshold to send. helps to minimize noise and latency
-  // check trigger value is appropriate before send.
-  // label in check call must match with max. make match with sense call
   check("gyro ", pgy, gy, 10);
-  //check("accel ", pacc, acc, 10);
-  check("pressure ", pap, ap, 100);
+  check("accel ", pacc, acc, 10);
+  check("air ", pap, ap, 100);
   check("index ", pfingP1, fingP1, 10);
   check("middle ", pfingP2, fingP2, 10);
   check("ring ", pfingP3, fingP3, 10);
@@ -210,7 +215,7 @@ bool checkBattery(void *)
   return true; // keep timer active? true
 }
 
-void mpu_read()
+void mpu_read(char label)
 { // gets accel and gyro data. transmits it
   Wire.beginTransmission(MPU_addr);
   Wire.write(0x3B); // starting with register 0x3B (ACCEL_XOUT_H)
@@ -223,78 +228,19 @@ void mpu_read()
   GyY = Wire.read() << 8 | Wire.read(); // 0x45 (GYRO_YOUT_H) & 0x46 (GYRO_YOUT_L)
   GyZ = Wire.read() << 8 | Wire.read(); // 0x47 (GYRO_ZOUT_H) & 0x48 (GYRO_ZOUT_L)
 
-  // scaling and truncating
-  // don't use map();
-  for (int i = 0; i < 6; i++)
+  if (label == "accel ")
   {
-    if (i == 0)
-    {
-      valueMapping(AcX);
-    }
-    else if (i == 1)
-    {
-      valueMapping(AcY);
-    }
-    else if (i == 2)
-    {
-      valueMapping(AcZ);
-    }
-    else if (i == 3)
-    {
-      valueMapping(GyX);
-    }
-    else if (i == 4)
-    {
-      valueMapping(GyY);
-    }
-    else if (i == 5)
-    {
-      valueMapping(GyZ);
-    }
+    float a = [ AcX, AcY, AcZ ]; //currently sends array. Will need to monitor and send all values seperately.
+    return a;
   }
-
-  if ((pgy * pgy) - (gy * gy) > 1)
-  { // double check all ranges of sensors. replace 1 with appropriate value
-    trans("gyro ", gy);
-  } // set up accel. currently is part of same function as gyro. monitor and send values seperately.
-
-  // transmit accel values
-  //  SerialBT.print("ax ");
-  //  SerialBT.println(AcX);
-  //  SerialBT.print("az ");
-  //  SerialBT.println(AcY);
-  //  SerialBT.print("az ");
-  //  SerialBT.println(AcZ);
-  //
-  //  // transmits gyro values
-  //  SerialBT.print("gx ");
-  //  SerialBT.println(GyX);
-  //  SerialBT.print("gy ");
-  //  SerialBT.println(GyY);
-  //  SerialBT.print("gz ");
-  //  SerialBT.println(GyZ);
-
-  // transmits wire serial for testing/ out of redundency
-  // datta always transmits
-  // transmit accel values
-  //  Serial.print("ax ");
-  //  Serial.println(AcX);
-  //  Serial.print("az ");
-  //  Serial.println(AcY);
-  //  Serial.print("az ");
-  //  Serial.println(AcZ);
-  //
-  //
-  //  // transmits gyro values
-  //  Serial.print("gx ");
-  //  Serial.println(GyX);
-  //  Serial.print("gy ");
-  //  Serial.println(GyY);
-  //  Serial.print("gz ");
-  //  Serial.println(GyZ);
+  else if (label == "gyro ")
+  {
+    float g = [ GyX, GyY, GyZ ];
+    return g;
+  }
 }
 
-void airPressureRead()
+float airPressureRead()
 { //adjust this function to match current settings
   values[ind] = MPS20N0040D.read();
   ind++;
@@ -309,17 +255,13 @@ void airPressureRead()
     airP / 5;
   }
 
+  return airP;
+
   // SerialBT.print("p ");
   // SerialBT.println(airP);
   // Serial.print("p ");
   // Serial.println(airP);
 
-  void mapped = valueMapping(airP);
-
-  if ((pap * pap) - (ap * ap) > 1)
-  {
-    trans("airPressure ", ap);
-  }
   //return mapped;
 
   //  float avg_val = 0.0; // variable for averaging
@@ -356,33 +298,64 @@ float sense(char sensor)
     ringPressVal = analogRead(ringPress);
     float mapped = valueMapping(ringPress);
   }
-  else if (sensor == "button1")
+  else if (sensor == "button1 ")
   {
     button1State = digitalRead(button1);
     float mapped = valueMapping(button1State);
   }
-  else if (sensor == "button2")
+  else if (sensor == "button2 ")
   {
     button2State = digitalRead(button2);
     float mapped = valueMapping(button2State);
   }
-  //add else if for gyro accel and air pressure
+  else if (sensor == "gyro ")
+  {
+    gyScope = mpu_read("gyro "); //this one returns an array.
+    float mapped = valueMapping(gyScope);
+  }
+  else if (sensor == "accel")
+  {
+    acScope = mpu_read("accel "); //this one returns an array.
+    float mapped = valueMapping(acScope);
+  }
+  else if (sensor == "air ")
+  {
+    air = airPressureRead();
+    float mapped = valueMapping(airP);
+  }
+  else
+  {
+    if (mode == 1)
+    {
+      // set to wireless mode
+      SerialBT.println("Err: Not a valid sensor designation.");
+    }
+    else
+    {
+      // set to wired mode.
+      Serial.println("Err: Not a valid sensor designation.");
+    }
+  }
+
   return mapped
 }
 
 char *valueMapping(int value)
-{                              // change char* to void if not returning values
-  float mapped = value / 4095; // 12 bit board.
-  char sendValue[7];
-  sprintf(sendValue, "%.5f", mapped); // might need "%.5d" as second argument. current should work.
-  puts(sendValue);
-  //Serial.print(sendValue);
-  return sendValue;
+{ // change char* to void if not returning values
+  value.foreach () = >
+  { //check formatting. I want this to happen for each value sent in because of arrays.
+    float mapped = value / 4095;
+    char sendValue[7];
+    sprintf(sendValue, "%.5f", mapped); // might need "%.5d" as second argument. current should work.
+    puts(sendValue);
+    //Serial.print(sendValue);
+    return sendValue;
+  }
 }
 
-void check(char label, float value1, float value2, float trigger) //condense into sense()?
+void check(char label, float value1, float value2, float trigger) //label, previous, current, range
 {
-  if ((value2 * value2) - (value1 * value1) >= trigger)
+  if ((value2 * value2) - (value1 * value1) >= trigger) //only sends if value is large enough
   {
     trans(label, value2);
   }
@@ -392,13 +365,13 @@ void trans(char label, float transmit)
 { // transmits a label and the data. make sure labels match in max patches.
   if (mode == 1)
   {
-    // set to wireless mode
+    // wireless mode
     SerialBT.print(label);
     SerialBT.println(transmit);
   }
   else
   {
-    // set to wired mode.
+    // wired mode.
     Serial.print(label);
     Serial.println(transmit);
   }
