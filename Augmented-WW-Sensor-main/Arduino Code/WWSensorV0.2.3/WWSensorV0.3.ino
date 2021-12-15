@@ -231,13 +231,12 @@ void mpu_read(char label)
   if (label == "accel ")
   {
     float a = [ AcX, AcY, AcZ ]; //currently sends array. Will need to monitor and send all values seperately.
-    return a;
   }
   else if (label == "gyro ")
   {
-    float g = [ GyX, GyY, GyZ ];
-    return g;
+    float a = [ GyX, GyY, GyZ ];
   }
+  return a;
 }
 
 float airPressureRead()
@@ -256,11 +255,6 @@ float airPressureRead()
   }
 
   return airP;
-
-  // SerialBT.print("p ");
-  // SerialBT.println(airP);
-  // Serial.print("p ");
-  // Serial.println(airP);
 
   //return mapped;
 
@@ -337,7 +331,7 @@ float sense(char sensor)
     }
   }
 
-  return mapped
+  return mapped;
 }
 
 char *valueMapping(int value)
