@@ -21,14 +21,14 @@ int16_t AcX, AcY, AcZ, Tmp, GyX, GyY, GyZ;
 const int button1 = 13;
 const int button2 = 12;
 const int ledPin = 2;      // power on indicator
-const int pwrLed = 3;      //low battery indicator light
+const int pwrLed = 4;      //low battery indicator light
 const int indexPress = 33; // FSR's
 const int middlePress = 32;
 const int ringPress = 35;
 const byte MPS_OUT_pin = 25; // OUT data pin
 const byte MPS_SCK_pin = 18; // clock data pin
-
-const int modePin = 10; //pin for DIP switch. will change between wireless or wired. adjust value once switch is connected.
+const int senseCheckPin = 25;
+const int modePin = 14; //pin for DIP switch. will change between wireless or wired. adjust value once switch is connected.
 
 Q2HX711 MPS20N0040D(MPS_OUT_pin, MPS_SCK_pin); // start comm with the HX710B
 
@@ -215,7 +215,7 @@ bool checkBattery(void *)
   return true; // keep timer active? true
 }
 
-void mpu_read(char label)
+float mpu_read(char label)
 { // gets accel and gyro data. transmits it
   Wire.beginTransmission(MPU_addr);
   Wire.write(0x3B); // starting with register 0x3B (ACCEL_XOUT_H)
