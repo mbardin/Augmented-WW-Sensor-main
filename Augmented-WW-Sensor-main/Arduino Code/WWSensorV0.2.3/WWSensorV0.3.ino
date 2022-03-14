@@ -4,12 +4,15 @@
 // this version Dec 10 2021
 
 //libraries used:
-#include <Q2HX711.h>
+#include <Q2HX711.h> //for old air sensor. replace it with the new one
 #include <Wire.h>
-#include <MPU6050.h>
+#include <MPU6050.h> //gyro library
 #include <BluetoothSerial.h>
 #include <arduino-timer.h>
 #include <LibPrintf.h>
+#include <I2S.h> //microphone library
+#include <sdpsensor.h> //library for airflow sensor. set for ESP32 board.
+// #include <SparkFun_SDP3x_Arduino_Library.h> //backup airflow sensor library
 
 // include libraries in software download for user access.
 
@@ -25,6 +28,7 @@ const int pwrLed = 4;      //low battery indicator light
 const int indexPress = 33; // FSR's
 const int middlePress = 32;
 const int ringPress = 35;
+const int micPin = 27; //microphone pin. placeholder value. update with actual pin number.
 const byte MPS_OUT_pin = 25; // OUT data pin
 const byte MPS_SCK_pin = 18; // clock data pin
 const int senseCheckPin = 25;
@@ -42,7 +46,7 @@ float airP = 0;
 float avgVal = 0;
 int values[5] = {0}; //change here and below to change number of samples for AP sensor.
 int ind = 0;
-int mode = 1; //defaults to wired version for testing
+int mode = 1; //defaults to wired version for testing. make into wireless for final. make result of DIP switch
 
 float gy = 0; //figure out which of these I can remove once the code is working.
 float acc = 0;
@@ -64,6 +68,10 @@ float pbutt2 = 0;
 float air = 0;
 float gyScope = 0;
 float acScope = 0;
+float mic = 0;
+float pmic = 0;
+float micSample = 0;
+
 
 int batteryLevel = 0; // for checking battery level
 float voltage = 0;
@@ -82,15 +90,15 @@ void setup()
   pinMode(indexPress, INPUT);
   pinMode(middlePress, INPUT);
   pinMode(ringPress, INPUT);
+  pinMode(micPin, INPUT);
   pinMode(ledPin, OUTPUT);
   pinMode(pwrLed, OUTPUT);
   pinMode(modePin, INPUT);
-
   //mode = digitalRead(modePin); // uncomment to enable wireless mode
 
   // begins bluetooth communication
   // add dip switch to change between wired and wireless modes.
-  SerialBT.begin("AugmentedWWSensor"); // Devce name that will appear on computer
+  SerialBT.begin("AugmentedWWSensor"); // Device name that will appear on computer. Give an updated name when done.
   delay(1000);                         // delays one second before beginning serial communication
 
   Serial.begin(115200);
@@ -119,6 +127,7 @@ void loop()
   fingP3 = sense("ring ");
   butt1 = sense("button1 ");
   butt2 = sense("button2 ");
+  mic = sense("mic");
 
   // check if each reading is above threshold to send. helps to minimize noise and latency
   check("gyro ", pgy, gy, 10);
@@ -129,9 +138,11 @@ void loop()
   check("ring ", pfingP3, fingP3, 10);
   check("button1 ", pbutt1, butt1, 0.5);
   check("button2 ", pbutt2, butt2, 0.5);
+  check("mic", 0, 1, 0.5); // adjust for values when testing microphone sensitivity. make into variables.
 
   pgy = gy; // stores values from previous loop. used to compare with current values in check()
   pap = ap;
+  pmic = mic;
   pfingP1 = fingP1;
   pfingP2 = fingP2;
   pfingP3 = fingP3;
@@ -269,7 +280,7 @@ float airPressureRead()
   //  SerialBT.print("p ");
   //  SerialBT.println(avg_val, 0); // print out the average // currently sending unscaled value
   //
-  //  // transmits wire serial for testing/ out of redundency
+  //  // transmits wire serial for testing/ out of redundancy
   //  Serial.print("p ");
   //  Serial.println(avg_val, 0); // print out the average
 }
@@ -316,6 +327,10 @@ float sense(char sensor)
   {
     air = airPressureRead();
     float mapped = valueMapping(airP);
+  }
+  else if (sensor == "mic"){
+    micSample = I2S.read();
+    float mapped = valueMapping(micSample);
   }
   else
   {
