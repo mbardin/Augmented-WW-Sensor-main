@@ -1,5 +1,5 @@
 
-// Augmented Woodwind Sensor v 0.3
+// Augmented Woodwind Sensor v 0.6.9
 // code by Matthew A. Bardin
 // this version Dec 10 2021
 
