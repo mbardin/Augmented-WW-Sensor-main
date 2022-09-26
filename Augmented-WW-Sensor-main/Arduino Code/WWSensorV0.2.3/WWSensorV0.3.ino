@@ -4,7 +4,7 @@
 // this version Dec 10 2021
 
 //libraries used:
-#include <Q2HX711.h> //for old air sensor. replace it with the new one
+//#include <Q2HX711.h> //for old air sensor. replace it with the new one
 #include <Wire.h>
 #include <MPU6050.h> //gyro library
 #include <BluetoothSerial.h>
